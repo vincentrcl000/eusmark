@@ -1,0 +1,13 @@
+# OMC
+.omc/
+
+# General
+.DS_Store
+Thumbs.db
+
+# Project subdirectories
+**/node_modules/
+**/dist/
+**/target/
+**/.env
+**/.env.local

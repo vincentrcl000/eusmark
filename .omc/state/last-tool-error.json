@@ -1,7 +1,0 @@
-{
-  "tool_name": "Bash",
-  "tool_input_preview": "{\"command\":\"cd D:/Myprojects/eusmark && mkdir -p eus-annotator && cd eus-annotator && npx @tauri-apps/cli@latest init --app-name \\\"EUS标注工具\\\" --window-title \\\"EUS EUS 标注工具\\\" --dist-dir \\\"../dist\\\" --bef...",
-  "error": "Exit code 2\nerror: unexpected argument '--dist-dir' found\n\nUsage: npm run npx init <--ci|--force|--log|--directory <DIRECTORY>|--tauri-path <TAURI_PATH>|--app-name <APP_NAME>|--window-title <WINDOW_TITLE>|--frontend-dist <FRONTEND_DIST>|--dev-url <DEV_URL>|--before-dev-command <BEFORE_DEV_COMMAND>|--before-build-command <BEFORE_BUILD_COMMAND>>\n\nFor more information, try '--help'.",
-  "timestamp": "2026-05-16T02:46:45.719Z",
-  "retry_count": 4
-}

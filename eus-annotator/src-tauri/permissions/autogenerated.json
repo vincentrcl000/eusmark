@@ -1,0 +1,12 @@
+{
+  "identifier": "default",
+  "description": "Allows all custom commands for the annotator tool",
+  "commands": [
+    "get_last_folder",
+    "set_last_folder",
+    "scan_folder",
+    "load_annotations",
+    "save_annotations",
+    "export_csv"
+  ]
+}

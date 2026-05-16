@@ -1,0 +1,12 @@
+{
+  "name": "eus-annotator",
+  "version": "1.0.0",
+  "description": "EUS 标注工具",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.0"
+  }
+}

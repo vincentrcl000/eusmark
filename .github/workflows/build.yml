@@ -22,9 +22,9 @@ jobs:
             tauri_target: x86_64-pc-windows-msvc
             artifact: 'EUS标注工具_${{ github.ref_name }}_x64-setup.exe'
           - platform: macos-latest
-            rust_target: aarch64-apple-darwin,x86_64-apple-darwin
-            tauri_target: universal
-            artifact: 'EUS标注工具_${{ github.ref_name }}_universal.dmg'
+            rust_target: aarch64-apple-darwin
+            tauri_target: aarch64-apple-darwin
+            artifact: 'EUS标注工具_${{ github.ref_name }}_aarch64.dmg'
           - platform: ubuntu-22.04
             rust_target: x86_64-unknown-linux-gnu
             tauri_target: x86_64-unknown-linux-gnu

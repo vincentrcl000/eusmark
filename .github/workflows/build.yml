@@ -18,13 +18,16 @@ jobs:
       matrix:
         include:
           - platform: windows-latest
-            target: x64
+            rust_target: x86_64-pc-windows-msvc
+            tauri_target: x86_64-pc-windows-msvc
             artifact: 'EUS标注工具_${{ github.ref_name }}_x64-setup.exe'
           - platform: macos-latest
-            target: universal
+            rust_target: aarch64-apple-darwin,x86_64-apple-darwin
+            tauri_target: universal
             artifact: 'EUS标注工具_${{ github.ref_name }}_universal.dmg'
           - platform: ubuntu-22.04
-            target: x64
+            rust_target: x86_64-unknown-linux-gnu
+            tauri_target: x86_64-unknown-linux-gnu
             artifact: 'eus-annotator_${{ github.ref_name }}_amd64.deb'
 
     runs-on: ${{ matrix.platform }}
@@ -41,7 +44,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.rust_target }}
 
       - name: Install dependencies (Windows)
         if: matrix.platform == 'windows-latest'
@@ -62,16 +65,16 @@ jobs:
 
       - name: Build Tauri app
         run: |
-          npx tauri build --target ${{ matrix.target }}
+          npx tauri build --target ${{ matrix.tauri_target }}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
           path: |
-            eus-annotator/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            eus-annotator/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            eus-annotator/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
+            eus-annotator/src-tauri/target/${{ matrix.tauri_target }}/release/bundle/**/*.exe
+            eus-annotator/src-tauri/target/${{ matrix.tauri_target }}/release/bundle/**/*.dmg
+            eus-annotator/src-tauri/target/${{ matrix.tauri_target }}/release/bundle/**/*.deb
           if-no-files-found: error
 
   release:

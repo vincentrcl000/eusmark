@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EUS 标注工具</title>
+  <style>
+    :root {
+      --bg: #f5f3ef;
+      --surface: #ffffff;
+      --border: #e2ddd6;
+      --text: #1a1814;
+      --text-muted: #8a8278;
+      --accent: #2c5f8a;
+      --accent-light: #e8f0f7;
+      --grade-0: #4a9e6b;
+      --grade-1: #e8a230;
+      --grade-2: #d4693a;
+      --grade-3: #c0392b;
+      --grade-0-bg: #edf7f1;
+      --grade-1-bg: #fdf4e3;
+      --grade-2-bg: #fdf0ea;
+      --grade-3-bg: #fdecea;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; z-index: 100; }
+    .main { display: flex; flex: 1; overflow: hidden; }
+    
+    /* ── Sidebar ── */
+    .sidebar { width: 320px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sidebar-header { padding: 16px; border-bottom: 1px solid var(--border); background: #faf9f7; }
+    .progress-container { margin-top: 8px; height: 6px; background: #eee; border-radius: 3px; overflow: hidden; }
+    #progressFill { height: 100%; background: var(--accent); transition: width 0.3s; }
+    .case-list { flex: 1; overflow-y: auto; padding: 8px 0; }
+    .case-item { padding: 12px 16px; cursor: pointer; border-left: 4px solid transparent; transition: all 0.2s; border-bottom: 1px solid #f8f8f8; }
+    .case-item:hover { background: #fcfbf9; }
+    .case-item.active { background: var(--accent-light); border-left-color: var(--accent); }
+    .case-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .case-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    
+    /* ── Content ── */
+    .content { flex: 1; overflow-y: auto; padding: 32px; display: flex; flex-direction: column; gap: 24px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.02); }
+    
+    .grade-section { display: flex; gap: 12px; margin-top: 16px; }
+    .grade-btn { flex: 1; padding: 16px; border: 1px solid var(--border); border-radius: 8px; cursor: pointer; text-align: center; transition: all 0.2s; background: white; }
+    .grade-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+    .grade-btn.active.g0 { background: var(--grade-0-bg); border-color: var(--grade-0); color: var(--grade-0); }
+    .grade-btn.active.g1 { background: var(--grade-1-bg); border-color: var(--grade-1); color: var(--grade-1); }
+    .grade-btn.active.g2 { background: var(--grade-2-bg); border-color: var(--grade-2); color: var(--grade-2); }
+    .grade-btn.active.g3 { background: var(--grade-3-bg); border-color: var(--grade-3); color: var(--grade-3); }
+    
+    .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin-top: 16px; }
+    .image-card { 
+      aspect-ratio: 4/3; 
+      background: #000; 
+      border-radius: 8px; 
+      overflow: hidden; 
+      cursor: zoom-in; 
+      position: relative; 
+      border: 1px solid var(--border);
+      content-visibility: auto; /* 仅渲染可见区域 */
+      contain-intrinsic-size: 240px 180px;
+    }
+    .image-card img { width: 100%; height: 100%; object-fit: contain; }
+    
+    /* ── Lightbox ── */
+    .lightbox { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: none; align-items: center; justify-content: center; overflow: hidden; }
+    .lightbox.open { display: flex; }
+    .lightbox-img { 
+      max-width: 90%; 
+      max-height: 90%; 
+      object-fit: contain; 
+      transition: transform 0.1s ease-out; /* 平滑缩放 */
+      cursor: grab;
+      user-select: none;
+      -webkit-user-drag: none;
+    }
+    .lightbox-img:active { cursor: grabbing; }
+    .lightbox-nav { position: absolute; top: 50%; width: 100%; display: flex; justify-content: space-between; padding: 0 40px; pointer-events: none; z-index: 1010; }
+    .nav-circle { width: 56px; height: 56px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; pointer-events: auto; transition: 0.2s; }
+    .nav-circle:hover { background: rgba(255,255,255,0.2); }
+    
+    .btn { height: 36px; padding: 0 16px; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; font-weight: 500; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: 0.2s; }
+    .btn-primary { background: var(--accent); color: white; border: none; }
+    .btn-primary:hover { opacity: 0.9; }
+
+    #savedToast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1a1814; color: white; padding: 10px 24px; border-radius: 30px; font-size: 13px; display: none; z-index: 2000; }
+  </style>
+</head>
+<body>
+  <header>
+    <div style="display:flex; align-items:center; gap:20px;">
+      <h1 style="font-size:18px; color:var(--accent);">EUS 标注工具</h1>
+      <span id="folderInfo" style="font-size:12px; color:var(--text-muted); max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+    </div>
+    <div style="display:flex; gap:12px;">
+      <button class="btn" onclick="loadFolder()">加载目录</button>
+      <button class="btn btn-primary" onclick="exportData()">导出成果</button>
+    </div>
+  </header>
+
+  <div class="main">
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+          <span>标注进度</span>
+          <span id="progressText">0 / 0</span>
+        </div>
+        <div class="progress-container"><div id="progressFill" style="width:0%"></div></div>
+      </div>
+      <div class="case-list" id="caseList"></div>
+    </div>
+    
+    <div class="content" id="mainContent">
+      <div style="margin: auto; text-align: center; color: var(--text-muted);">
+        <p style="font-size: 24px; margin-bottom: 8px;">欢迎使用</p>
+        <p>请点击上方“加载目录”开始您的标注工作</p>
+      </div>
+    </div>
+  </div>
+
+  <div id="savedToast">已自动保存</div>
+  
+  <div id="lightbox" class="lightbox" onwheel="handleWheel(event)" onmousedown="startDrag(event)" onmousemove="doDrag(event)" onmouseup="stopDrag(event)" onmouseleave="stopDrag(event)">
+    <div class="lightbox-nav">
+      <div class="nav-circle" onclick="prevImage(event)">◀</div>
+      <div class="nav-circle" onclick="nextImage(event)">▶</div>
+    </div>
+    <img id="lightboxImg" class="lightbox-img" onclick="event.stopPropagation()">
+    <div style="position:absolute; bottom:20px; color:white; pointer-events:none;" id="lightboxCounter"></div>
+    <div style="position:absolute; top:20px; right:20px; color:rgba(255,255,255,0.5); font-size:12px; pointer-events:none;">滚轮缩放 / 拖拽移动 / ESC关闭</div>
+  </div>
+
+  <script>
+    const { invoke } = window.__TAURI__.core;
+    const { open, save } = window.__TAURI__.dialog;
+
+    let currentFolderPath = '';
+    let cases = [];
+    let currentId = null;
+    let annotationData = { cases: {} };
+    let currentImages = [];
+    let lightboxIndex = 0;
+
+    async function loadFolder() {
+      try {
+        const selected = await open({ directory: true, multiple: false });
+        if (!selected) return;
+        await doLoadFolder(selected);
+      } catch (e) {
+        alert('加载失败: ' + e);
+      }
+    }
+
+    async function doLoadFolder(path) {
+      currentFolderPath = path;
+      document.getElementById('folderInfo').textContent = path;
+      
+      // 记忆当前路径
+      await invoke('set_last_folder', { path });
+      
+      cases = await invoke('scan_folder', { path });
+      const folderName = path.split(/[/\\]/).pop();
+      const existing = await invoke('load_annotations', { folderName });
+      
+      annotationData = existing || { version: "2.0", cases: {} };
+      
+      renderSidebar();
+      updateProgress();
+      if (cases.length > 0) selectCase(cases[0].id);
+    }
+
+    async function init() {
+      try {
+        const lastPath = await invoke('get_last_folder');
+        if (lastPath) {
+          await doLoadFolder(lastPath);
+        }
+      } catch (e) {
+        console.error('自动加载失败:', e);
+      }
+    }
+
+    init();
+
+    function renderSidebar() {
+      const list = document.getElementById('caseList');
+      list.innerHTML = cases.map(c => {
+        const data = annotationData.cases[c.id] || {};
+        const grade = data.grade;
+        const gradeTag = (grade !== null && grade !== undefined) ? 
+          `<span style="font-size:11px; padding:1px 6px; border-radius:10px; background:var(--grade-${grade}); color:white;">G${grade}</span>` : '';
+        
+        return `
+          <div id="item-${c.id}" class="case-item ${c.id === currentId ? 'active' : ''}" onclick="selectCase('${c.id}')">
+            <div class="case-meta">
+              <span class="case-name">${c.id}</span>
+              ${gradeTag}
+            </div>
+            <div style="font-size:12px; color:var(--text-muted);">${c.images.length} 帧图像</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectCase(id) {
+      currentId = id;
+      document.querySelectorAll('.case-item').forEach(el => el.classList.remove('active'));
+      document.getElementById(`item-${id}`)?.classList.add('active');
+
+      const c = cases.find(x => x.id === id);
+      currentImages = c.images;
+      const data = annotationData.cases[id] || { grade: null, notes: '' };
+      
+      const content = document.getElementById('mainContent');
+      content.innerHTML = `
+        <div class="panel">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+            <h2 style="font-size:20px;">病例 ID: ${id}</h2>
+            <div style="display:flex; gap:8px;">
+              <button class="btn" onclick="navigateCase(-1)">上一个</button>
+              <button class="btn" onclick="navigateCase(1)">下一个</button>
+            </div>
+          </div>
+          
+          <div style="font-size:13px; color:var(--text-muted); margin-bottom:8px;">程度分级 (快捷键 0-3)</div>
+          <div class="grade-section">
+            ${[0,1,2,3].map(g => `
+              <div class="grade-btn g${g} ${data.grade === g ? 'active' : ''}" onclick="setGrade(${g})">
+                <div style="font-weight:bold; font-size:18px;">G${g}</div>
+                <div style="font-size:11px; margin-top:4px;">分级 ${g}</div>
+              </div>
+            `).join('')}
+          </div>
+          
+          <div style="font-size:13px; color:var(--text-muted); margin-top:20px; margin-bottom:8px;">标注备注</div>
+          <textarea id="notesArea" style="width:100%; height:80px; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:inherit; resize:none;" 
+            placeholder="填写补充信息..." oninput="saveNotes()">${data.notes || ''}</textarea>
+        </div>
+        
+        <div class="image-grid">
+          ${c.images.map((img, idx) => {
+            // 使用官方 convertFileSrc 获取最稳健的路径
+            const fullPath = `${currentFolderPath}\\${id}\\${img.path}`;
+            const src = window.__TAURI__.core.convertFileSrc(fullPath);
+            return `
+              <div class="image-card" onclick="openLightbox(${idx})">
+                <img src="${src}" loading="lazy" decoding="async" onerror="console.error('加载失败:', '${fullPath}')">
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
+    function navigateCase(delta) {
+      const idx = cases.findIndex(c => c.id === currentId);
+      const newIdx = idx + delta;
+      if (newIdx >= 0 && newIdx < cases.length) {
+        selectCase(cases[newIdx].id);
+        document.getElementById(`item-${cases[newIdx].id}`)?.scrollIntoView({ block: 'nearest' });
+      }
+    }
+
+    async function setGrade(g) {
+      if (!annotationData.cases[currentId]) {
+        const c = cases.find(x => x.id === currentId);
+        annotationData.cases[currentId] = { ...c };
+      }
+      annotationData.cases[currentId].grade = g;
+      annotationData.cases[currentId].annotated_at = new Date().toISOString();
+      await saveLocal();
+      selectCase(currentId);
+      renderSidebar();
+      updateProgress();
+      showToast();
+    }
+
+    let notesTimer;
+    function saveNotes() {
+      clearTimeout(notesTimer);
+      notesTimer = setTimeout(async () => {
+        if (!annotationData.cases[currentId]) {
+          const c = cases.find(x => x.id === currentId);
+          annotationData.cases[currentId] = { ...c };
+        }
+        annotationData.cases[currentId].notes = document.getElementById('notesArea').value;
+        await saveLocal();
+        showToast();
+      }, 500);
+    }
+
+    async function saveLocal() {
+      const folderName = currentFolderPath.split(/[/\\]/).pop();
+      await invoke('save_annotations', { folderName, data: annotationData });
+    }
+
+    function updateProgress() {
+      const total = cases.length;
+      const done = cases.filter(c => annotationData.cases[c.id]?.grade !== null && annotationData.cases[c.id]?.grade !== undefined).length;
+      document.getElementById('progressText').textContent = `${done} / ${total}`;
+      document.getElementById('progressFill').style.width = (total ? (done/total*100) : 0) + '%';
+    }
+
+    function showToast() {
+      const t = document.getElementById('savedToast');
+      t.style.display = 'block';
+      setTimeout(() => t.style.display = 'none', 1000);
+    }
+
+    let zoomScale = 1;
+    let isDragging = false;
+    let startX, startY, translateX = 0, translateY = 0;
+
+    function openLightbox(idx) {
+      lightboxIndex = idx;
+      resetZoom();
+      updateLightbox();
+      document.getElementById('lightbox').classList.add('open');
+    }
+
+    function updateLightbox() {
+      const img = currentImages[lightboxIndex];
+      const fullPath = `${currentFolderPath}\\${currentId}\\${img.path}`;
+      const src = window.__TAURI__.core.convertFileSrc(fullPath);
+      const imgEl = document.getElementById('lightboxImg');
+      imgEl.src = src;
+      document.getElementById('lightboxCounter').textContent = `${lightboxIndex + 1} / ${currentImages.length}`;
+      resetZoom();
+    }
+
+    function resetZoom() {
+      zoomScale = 1;
+      translateX = 0;
+      translateY = 0;
+      applyTransform();
+    }
+
+    function applyTransform() {
+      const imgEl = document.getElementById('lightboxImg');
+      imgEl.style.transform = `translate(${translateX}px, ${translateY}px) scale(${zoomScale})`;
+    }
+
+    function handleWheel(e) {
+      e.preventDefault();
+      const delta = e.deltaY > 0 ? 0.9 : 1.1;
+      const newScale = zoomScale * delta;
+      if (newScale >= 0.5 && newScale <= 20) {
+        zoomScale = newScale;
+        applyTransform();
+      }
+    }
+
+    function startDrag(e) {
+      if (e.button !== 0) return; // 仅左键
+      isDragging = true;
+      startX = e.clientX - translateX;
+      startY = e.clientY - translateY;
+    }
+
+    function doDrag(e) {
+      if (!isDragging) return;
+      translateX = e.clientX - startX;
+      translateY = e.clientY - startY;
+      applyTransform();
+    }
+
+    function stopDrag() {
+      isDragging = false;
+    }
+
+    function closeLightbox(e) {
+      // 这里的逻辑改为在 handleKeydown 或点击背景时关闭
+      document.getElementById('lightbox').classList.remove('open');
+      resetZoom();
+    }
+
+    // 在 body 上增加点击背景关闭的逻辑
+    document.getElementById('lightbox').addEventListener('click', function(e) {
+      if (e.target === this) closeLightbox();
+    });
+
+    function prevImage(e) {
+      e.stopPropagation();
+      if (lightboxIndex > 0) { lightboxIndex--; updateLightbox(); }
+    }
+
+    function nextImage(e) {
+      e.stopPropagation();
+      if (lightboxIndex < currentImages.length - 1) { lightboxIndex++; updateLightbox(); }
+    }
+
+    async function exportData() {
+      if (!currentFolderPath) return;
+      const folderName = currentFolderPath.split(/[/\\]/).pop();
+      const savePath = await save({ defaultPath: `${folderName}_标注.csv`, filters: [{name:'CSV', extensions:['csv']}] });
+      if (savePath) {
+        await invoke('export_csv', { data: annotationData, savePath });
+        alert('导出完成');
+      }
+    }
+
+    window.addEventListener('keydown', e => {
+      if (e.target.tagName === 'TEXTAREA') return;
+      if (['0','1','2','3'].includes(e.key)) setGrade(parseInt(e.key));
+      if (e.key === 'ArrowRight') navigateCase(1);
+      if (e.key === 'ArrowLeft') navigateCase(-1);
+      if (e.key === 'Escape') document.getElementById('lightbox').classList.remove('open');
+    });
+  </script>
+</body>
+</html>

@@ -1,8 +1,5 @@
 # Build outputs
 src-tauri/target/
-dist/
-build/
-
 # OS files
 .DS_Store
 Thumbs.db

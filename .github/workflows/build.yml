@@ -46,23 +46,19 @@ jobs:
       - name: Install dependencies (Windows)
         if: matrix.platform == 'windows-latest'
         run: |
-          cargo install tauri-cli --version "^2"
           npm install
-          npm run build
 
       - name: Install dependencies (macOS)
         if: matrix.platform == 'macos-latest'
         run: |
-          cargo install tauri-cli --version "^2"
           npm install
-          npm run build
 
       - name: Install dependencies (Linux)
         if: matrix.platform == 'ubuntu-22.04'
         run: |
-          cargo install tauri-cli --version "^2"
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
           npm install
-          npm run build
 
       - name: Build Tauri app
         run: |
@@ -73,9 +69,9 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
+            eus-annotator/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
+            eus-annotator/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            eus-annotator/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
           if-no-files-found: error
 
   release:
